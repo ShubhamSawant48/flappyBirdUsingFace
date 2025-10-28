@@ -1,32 +1,32 @@
-import React from 'react';
+import React from "react";
 
 const WebcamView = React.forwardRef(({ faceBoxCanvasRef }, ref) => {
   return (
     <>
-      <canvas ref={faceBoxCanvasRef} style={styles.faceBoxCanvas} />
       <video ref={ref} autoPlay muted style={styles.video} playsInline></video>
+      <canvas ref={faceBoxCanvasRef} style={styles.faceBoxCanvas} />
     </>
   );
 });
 
 const styles = {
   video: {
-    position: 'absolute',
-    bottom: '10px',
-    right: '10px',
-    width: '120px',
-    height: '90px',
-    border: '2px solid white',
-    borderRadius: '8px',
-    transform: 'scaleX(-1)', // Mirror effect
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    transform: "scaleX(-1)", // Mirror effect
   },
   faceBoxCanvas: {
-    position: 'absolute',
-    bottom: '10px',
-    right: '10px',
-    width: '120px',
-    height: '90px',
-    transform: 'scaleX(-1)', // Mirror effect to match video
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    pointerEvents: "none",
+    transform: "scaleX(-1)", // Mirror effect to match video
   },
 };
 

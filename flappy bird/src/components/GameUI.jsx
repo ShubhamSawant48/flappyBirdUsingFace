@@ -1,61 +1,51 @@
-import React from 'react';
+import React from "react";
 
-const GameUI = ({ gameState, modelsLoaded, username, setUsername, onStart }) => {
-  
+const GameUI = ({
+  gameState,
+  modelsLoaded,
+  username,
+  setUsername,
+  onStart,
+}) => {
   const handleStartClick = () => {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
           onStart(stream);
         })
-        .catch(err => console.error("Error accessing webcam:", err));
+        .catch((err) => console.error("Error accessing webcam:", err));
     }
   };
 
   return (
-    <>
-      {gameState !== 'running' && modelsLoaded && (
-        <button onClick={handleStartClick} style={styles.button}>
-          {gameState === 'over' ? 'Play Again' : 'Start Game'}
+    <div className="w-full flex flex-col gap-3">
+      {gameState !== "running" && modelsLoaded && (
+        <button
+          onClick={handleStartClick}
+          className="w-full px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-lg font-bold rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+        >
+          {gameState === "over" ? "Play Again" : "Start Game"}
         </button>
       )}
-      {gameState !== 'running' && (
-        <div style={styles.usernameContainer}>
-          <input
-            type="text"
-            placeholder="Enter Name for Leaderboard"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            style={styles.input}
-          />
+      {gameState !== "running" && (
+        <input
+          type="text"
+          placeholder="Enter your name"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="w-full px-4 py-3 text-lg border-2 border-slate-200 rounded-xl focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-200 transition-all placeholder:text-slate-400"
+        />
+      )}
+      {gameState !== "running" && !modelsLoaded && (
+        <div className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-center">
+          <span className="text-blue-600 font-medium">
+            Loading face detection models...
+          </span>
         </div>
       )}
-    </>
+    </div>
   );
-};
-
-const styles = {
-    button: {
-        padding: '15px 30px',
-        fontSize: '1.2em',
-        cursor: 'pointer',
-        backgroundColor: '#4CAF50',
-        color: 'white',
-        border: 'none',
-        borderRadius: '8px',
-        marginTop: '20px',
-        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-    },
-    usernameContainer: {
-        marginTop: '10px',
-    },
-    input: {
-        padding: '10px',
-        fontSize: '1em',
-        width: '250px',
-        borderRadius: '5px',
-        border: '1px solid #ccc',
-    },
 };
 
 export default GameUI;
