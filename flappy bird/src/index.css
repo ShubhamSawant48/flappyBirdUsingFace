@@ -1,11 +1,35 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: font1;
+  src: url(../src/assets/Mario-Kart-DS.ttf);
+}
+@font-face {
+  font-family: font2;
+  src: url(../src/assets/Perfect.ttf);
+}
+@font-face {
+  font-family: font3;
+  src: url(../src/assets/04B_30__.TTF);
+}
+@font-face {
+  font-family: font4;
+  src: url(../src/assets/Styleturn-DEMO.otf);
+}
+@font-face {
+  font-family: font5;
+  src: url(../src/assets/m12.TTF);
+}
+@font-face {
+  font-family: font6;
+  src: url(../src/assets/Vintage-Warehouse.ttf);
+}
 :root {
-  --bg: #f7fbff;
-  --text: #0f172a;
-  --muted: #475569;
-  --primary: #2563eb;
-  --accent: #38bdf8;
+  --bg: #0f172a;
+  --text: #f1f5f9;
+  --muted: #94a3b8;
+  --primary: #3b82f6;
+  --accent: #60a5fa;
 }
 
 html,
@@ -17,7 +41,7 @@ body,
 
 body {
   margin: 0;
-  background: linear-gradient(180deg, #e6f2ff 0%, #f7fbff 60%);
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 60%);
   color: var(--text);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
     "Apple Color Emoji", "Segoe UI Emoji";
@@ -73,21 +97,6 @@ body {
   animation: slideUp 0.6s ease forwards;
 }
 
-/* Feature cards hover effect */
-.feature-card {
-  will-change: transform, box-shadow, border-color;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-.feature-card:hover {
-  transform: translateY(-6px);
-  border-color: #fb923c; /* orange to match hero gradient */
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.08);
-}
-.feature-card:active {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
-}
-
 /* Hero buttons hover effects */
 .btn-hero {
   transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease,
@@ -111,27 +120,41 @@ body {
   box-shadow: 0 10px 24px rgba(251, 146, 60, 0.2);
 }
 
-/* Hero responsive layout */
-@media (max-width: 900px) {
-  .hero-responsive {
-    grid-template-columns: 1fr !important;
-    row-gap: 20px !important;
-    padding: 56px 20px !important;
+/* Custom gradients for bird effects */
+.bg-gradient-radial {
+  background: radial-gradient(
+    closest-side,
+    rgba(253, 114, 114, 0.35),
+    rgba(253, 164, 116, 0.22) 45%,
+    rgba(255, 214, 153, 0.1) 65%,
+    transparent 75%
+  );
+}
+
+.bg-conic-gradient {
+  background: conic-gradient(
+    from 180deg at 50% 50%,
+    rgba(255, 125, 125, 0.55),
+    rgba(255, 203, 125, 0.35),
+    rgba(255, 125, 125, 0.55)
+  );
+}
+
+/* Float animation for bird */
+@keyframes float {
+  0% {
+    transform: translateY(0);
   }
-  .hero-left {
-    text-align: center;
-    align-items: center;
+  50% {
+    transform: translateY(-6px);
   }
-  .hero-right {
-    min-height: 320px !important;
-    margin-top: 8px;
+  100% {
+    transform: translateY(0);
   }
 }
 
-@media (max-width: 640px) {
-  .hero-responsive {
-    padding: 44px 16px !important;
-  }
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
 
 /* Buttons */
@@ -145,32 +168,32 @@ body {
 }
 
 .btn-primary {
-  background: var(--primary);
+  background: linear-gradient(to right, #3b82f6, #8b5cf6);
   color: white;
-  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.25);
+  box-shadow: 0 6px 14px rgba(59, 130, 246, 0.35);
 }
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.28);
-  /* width: 10vw; */
+  box-shadow: 0 8px 18px rgba(59, 130, 246, 0.45);
 }
 
 .btn-outline {
-  background: white;
-  color: var(--primary);
-  border: 1px solid #cfe0ff;
+  background: rgba(30, 41, 59, 0.8);
+  color: var(--accent);
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 .btn-outline:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 6px 14px rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
 }
 
 /* Home extras */
 .glass {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(30, 41, 59, 0.6);
   backdrop-filter: saturate(140%) blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 30px rgba(31, 41, 55, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 }
 
 .title-gradient {
@@ -187,47 +210,47 @@ body {
 }
 
 .tip {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
   padding: 16px;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .tip:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
-  border-color: #93c5fd; /* light blue border on hover */
+  box-shadow: 0 12px 24px rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
 }
 
 .link-cta {
-  color: #2563eb;
+  color: #60a5fa;
   text-decoration: none;
-  border-bottom: 1px dashed rgba(37, 99, 235, 0.4);
+  border-bottom: 1px dashed rgba(96, 165, 250, 0.4);
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 .link-cta:hover {
-  color: #1d4ed8;
-  border-color: rgba(29, 78, 216, 0.7);
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.7);
 }
 
 /* Home page background wrapper */
 .home-bg {
   background: radial-gradient(
       1200px 600px at 10% 0%,
-      #e0f2fe 0%,
-      rgba(224, 242, 254, 0) 50%
+      #1e3a8a 0%,
+      rgba(30, 58, 138, 0) 50%
     ),
     radial-gradient(
       1200px 600px at 90% 20%,
-      #fde68a 0%,
-      rgba(253, 230, 138, 0) 50%
+      #7c3aed 0%,
+      rgba(124, 58, 237, 0) 50%
     ),
     radial-gradient(
       800px 400px at 50% 100%,
-      #fbcfe8 0%,
-      rgba(251, 207, 232, 0) 50%
+      #be185d 0%,
+      rgba(190, 24, 93, 0) 50%
     ),
-    linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+    linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
   border-radius: 16px;
 }
 
@@ -305,8 +328,8 @@ body {
 
 /* Leaderboard preview styles */
 .lb-section {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 12px;
   padding: 16px;
 }
@@ -316,8 +339,8 @@ body {
   gap: 12px;
 }
 .lb-item {
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 10px;
   padding: 12px;
   display: flex;
@@ -329,25 +352,25 @@ body {
 }
 .lb-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
-  border-color: #93c5fd;
+  box-shadow: 0 8px 16px rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
 }
 .lb-rank {
   font-weight: 700;
-  color: #2563eb;
+  color: #60a5fa;
 }
 .lb-name {
-  color: #111827;
+  color: #f1f5f9;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .lb-score {
   font-weight: 700;
-  color: #0ea5e9;
+  color: #8b5cf6;
 }
 .lb-empty {
-  color: #6b7280;
+  color: #94a3b8;
   text-align: center;
   padding: 12px;
 }
@@ -356,7 +379,7 @@ body {
 .site-footer {
   margin-top: 28px;
   padding: 20px;
-  color: #475569;
+  color: #94a3b8;
   display: flex;
   align-items: center;
   justify-content: space-between;

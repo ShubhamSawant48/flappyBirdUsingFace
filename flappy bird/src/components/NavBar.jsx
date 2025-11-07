@@ -1,103 +1,67 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Github } from "lucide-react";
+import { Github, Gamepad2 } from "lucide-react";
 
 function NavBar() {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav style={styles.nav}>
-      <div style={styles.brand}>Flappy Face</div>
-      <div style={styles.links}>
+    <nav className="fixed top-0 left-0 right-0 h-[60px] flex items-center justify-between px-5 sm:px-8 bg-gray-900/80 backdrop-blur-md border-b border-gray-700/50 shadow-lg shadow-black/20 z-50">
+      <Link
+        to="/"
+        className="font-[font2] text-xl font-bold bg-linear-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent hover:scale-105 transition-transform duration-200"
+      >
+        <div className="flex items-center gap-2">
+          <Gamepad2 className="w-6 h-6 text-purple-400" />
+          <span>Game Vault</span>
+        </div>
+      </Link>
+      <div className="flex items-center gap-2">
         <Link
-          style={{
-            ...styles.link,
-            ...(isActive("/") ? styles.activeLink : {}),
-          }}
           to="/"
+          className={`inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-200 ${
+            isActive("/")
+              ? "bg-linear-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/50"
+              : "text-gray-300 hover:text-white hover:bg-gray-800/50"
+          }`}
         >
-          <span style={styles.linkLabel}>Home</span>
+          <span>Home</span>
         </Link>
         <Link
-          style={{
-            ...styles.link,
-            ...(isActive("/play") ? styles.activeLink : {}),
-          }}
-          to="/play"
+          to="/games"
+          className={`inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-200 ${
+            isActive("/games")
+              ? "bg-linear-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/50"
+              : "text-gray-300 hover:text-white hover:bg-gray-800/50"
+          }`}
         >
-          <span style={styles.linkLabel}>Play</span>
+          <span>Games</span>
+        </Link>
+        <Link
+          to="/play"
+          className={`inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg transition-all duration-200 ${
+            isActive("/play")
+              ? "bg-linear-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-500/50"
+              : "text-gray-300 hover:text-white hover:bg-gray-800/50"
+          }`}
+        >
+          <span>Play</span>
         </Link>
         <a
-          style={{ ...styles.link, ...styles.iconLink }}
           href="https://github.com"
           target="_blank"
           rel="noreferrer"
           aria-label="Open GitHub repository"
           title="GitHub"
+          className="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all duration-200"
         >
           <Github size={18} strokeWidth={2} />
-          <span style={styles.linkLabel}>GitHub</span>
+          <span className="hidden sm:inline">GitHub</span>
         </a>
       </div>
     </nav>
   );
 }
-
-const styles = {
-  nav: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "0 20px",
-    background: "rgba(255,255,255,0.8)",
-    backdropFilter: "saturate(140%) blur(8px)",
-    WebkitBackdropFilter: "saturate(140%) blur(8px)",
-    color: "#0f172a",
-    zIndex: 1000,
-    borderBottom: "1px solid #e5e7eb",
-    boxShadow: "0 8px 24px rgba(31,41,55,0.06)",
-  },
-  brand: {
-    fontWeight: 700,
-    fontSize: 18,
-    letterSpacing: 0.3,
-  },
-  links: {
-    display: "flex",
-    gap: 8,
-  },
-  link: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    color: "#334155",
-    textDecoration: "none",
-    fontSize: 14,
-    padding: "8px 12px",
-    borderRadius: 10,
-    border: "1px solid transparent",
-    transition:
-      "color .15s ease, background-color .15s ease, border-color .15s ease, transform .15s ease",
-  },
-  activeLink: {
-    color: "#ffffff",
-    backgroundColor: "#fb923c",
-    borderColor: "#fb923c",
-    boxShadow: "0 4px 12px rgba(251, 146, 60, 0.3)",
-  },
-  iconLink: {
-    paddingLeft: 10,
-    paddingRight: 10,
-  },
-  linkLabel: {
-    lineHeight: 1,
-  },
-};
 
 export default NavBar;

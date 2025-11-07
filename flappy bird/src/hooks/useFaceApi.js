@@ -4,10 +4,12 @@ export const useFaceApi = (onSmile, isDetecting) => {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const videoRef = useRef(null);
   const faceBoxCanvasRef = useRef(null);
-  const detectionIntervalRef = useRef(null);
+  
+  // --- CHANGE 1: Use a ref for the setTimeout ID ---
+  const detectionLoopRef = useRef(null); 
   const canJumpRef = useRef(true);
 
-  // --- Model Loading ---
+  // --- Model Loading (No Change) ---
   useEffect(() => {
     const loadModels = async () => {
       try {
@@ -26,8 +28,11 @@ export const useFaceApi = (onSmile, isDetecting) => {
     else document.getElementById('faceapi-script')?.addEventListener('load', loadModels);
   }, []);
 
+  // --- CHANGE 2: stopDetection now uses clearTimeout ---
   const stopDetection = useCallback(() => {
-    clearInterval(detectionIntervalRef.current);
+    if (detectionLoopRef.current) {
+      clearTimeout(detectionLoopRef.current); // Use clearTimeout
+    }
     const canvas = faceBoxCanvasRef.current;
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -35,11 +40,14 @@ export const useFaceApi = (onSmile, isDetecting) => {
     }
   }, []);
 
-  // --- Face Detection Logic ---
+  // --- CHANGE 3: The main detection loop (startDetection) ---
   const startDetection = useCallback(() => {
-    detectionIntervalRef.current = setInterval(async () => {
+    
+    // Define the async loop function
+    const runDetection = async () => {
       if (videoRef.current && !videoRef.current.paused) {
-        const detections = await window.faceapi.detectSingleFace(videoRef.current, new window.faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+        // We are adding { inputSize: 224 } to speed up the detector
+const detections = await window.faceapi.detectSingleFace(videoRef.current, new window.faceapi.TinyFaceDetectorOptions({ inputSize: 224 })).withFaceExpressions();
 
         const canvas = faceBoxCanvasRef.current;
         const displaySize = { width: 120, height: 90 };
@@ -53,24 +61,32 @@ export const useFaceApi = (onSmile, isDetecting) => {
           }
         }
         
-        if (detections && detections.expressions.happy > 0.30) {
+        if (detections && detections.expressions.happy > 0.25) {
           if (canJumpRef.current) {
             onSmile();
             canJumpRef.current = false;
-            setTimeout(() => { canJumpRef.current = true; }, 300);
+            // Using a 250ms cooldown for a "snappy" feel
+            setTimeout(() => { canJumpRef.current = true; }, 250); 
           }
         }
       }
-    }, 80);
-  }, [onSmile]);
+      // After the detection is done, schedule the next one in 30ms
+      detectionLoopRef.current = setTimeout(runDetection, 30);
+    };
 
+    // Start the loop for the first time
+    runDetection();
+
+  }, [onSmile]); // end of startDetection
+
+  // This useEffect hook handles starting and stopping the loop
   useEffect(() => {
     if (isDetecting) {
         startDetection();
     } else {
         stopDetection();
     }
-    return () => stopDetection();
+    return () => stopDetection(); // Cleanup on unmount
   }, [isDetecting, startDetection, stopDetection]);
 
   return { modelsLoaded, videoRef, faceBoxCanvasRef };
