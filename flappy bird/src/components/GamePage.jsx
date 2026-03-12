@@ -22,6 +22,8 @@ function GamePage() {
     jump,
   } = useGameLogic();
 
+  console.log(leaderboard);
+
   const { modelsLoaded, videoRef, faceBoxCanvasRef } = useFaceApi(
     jump,
     isDetecting
@@ -33,6 +35,7 @@ function GamePage() {
       videoRef.current.srcObject = stream;
       startGame(username); // Pass the username from state
       setIsDetecting(true);
+      console;
     }
   };
 
@@ -94,7 +97,7 @@ function GamePage() {
               🏆 Leaderboard
             </h2>
             <ul className="divide-y divide-gray-800">
-              {(leaderboard || []).slice(0, 10).map((entry, idx) => (
+              {(leaderboard || []).slice(0, 16).map((entry, idx) => (
                 <li
                   key={entry._id || idx}
                   className="flex justify-between py-2 text-gray-300"

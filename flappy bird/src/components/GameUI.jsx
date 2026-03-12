@@ -23,7 +23,7 @@ const GameUI = ({
       {gameState !== "running" && modelsLoaded && (
         <button
           onClick={handleStartClick}
-          className="w-full px-8 py-4 bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-lg font-bold rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full px-8 py-4 bg-linear-to-r from-blue to-blue hover:from-emerald-600 hover:to-teal-600 text-white text-lg font-bold rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98]"
         >
           {gameState === "over" ? "Play Again" : "Start Game"}
         </button>

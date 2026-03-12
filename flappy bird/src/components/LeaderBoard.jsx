@@ -1,6 +1,8 @@
 import React from 'react';
 
 const Leaderboard = ({ leaderboard }) => {
+
+  console.log(Leaderboard);
   return (
     <div style={styles.leaderboardContainer}>
       <h2 style={styles.leaderboardTitle}>🏆 Global Leaderboard 🏆</h2>
