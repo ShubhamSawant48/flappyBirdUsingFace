@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from "react"; // <-- THE FIX IS HERE
+import React, { useEffect, useState, useRef } from "react";
 import { useGameLogic } from "../hooks/useGameLogic.js";
 import { useFaceApi } from "../hooks/useFaceApi.js";
 import GameCanvas from "./GameCanvas.jsx";
-// Note: Your old Leaderboard.jsx component isn't used here, this page renders its own
 import WebcamView from "./WebcamView.jsx";
 import GameUI from "./GameUI.jsx";
 
@@ -10,6 +9,9 @@ function GamePage() {
   const [isDetecting, setIsDetecting] = useState(false);
   const [username, setUsername] = useState("");
   const [highScore, setHighScore] = useState(0);
+
+  // 📸 NEW: Keep a reference to the camera stream so we can kill it later!
+  const streamRef = useRef(null);
 
   const {
     gameState,
@@ -22,22 +24,32 @@ function GamePage() {
     jump,
   } = useGameLogic();
 
-  console.log(leaderboard);
-
   const { modelsLoaded, videoRef, faceBoxCanvasRef } = useFaceApi(
     jump,
     isDetecting
   );
 
-  // This function now correctly passes the username to the game logic
+  // 🚀 UPDATED: handleStart now saves the stream and forces playback
   const handleStart = (stream) => {
+    streamRef.current = stream; // Save the stream
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(e => console.warn("Video play error:", e)); // Prevent black screen
       startGame(username); // Pass the username from state
       setIsDetecting(true);
-      console;
     }
   };
+
+  // 🛑 NEW: The Camera Killswitch!
+  // Runs automatically when you leave the page to free the webcam hardware.
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        console.log("Face Game: Camera hardware successfully released!");
+      }
+    };
+  }, []);
 
   // Update high score locally
   useEffect(() => {
@@ -60,13 +72,13 @@ function GamePage() {
       <div className="container mx-auto flex flex-col lg:grid lg:grid-cols-2 gap-10 items-start">
         {/* --- LEFT SECTION (Camera, Score, Leaderboard) --- */}
         <div className="flex py-10 flex-col items-center justify-between gap-6 order-2 lg:order-1 w-full">
+          
           {/* Camera Feed */}
-
           <div className="relative w-full max-w-[420px] aspect-video bg-black border border-gray-700 rounded-2xl overflow-hidden shadow-xl shadow-black/30">
             <WebcamView ref={videoRef} faceBoxCanvasRef={faceBoxCanvasRef} />
           </div>
 
-          {/* Game Controls (Play Button + Input) */}
+          {/* Game Controls */}
           <div className="w-full max-w-[420px]">
             <GameUI
               gameState={gameState}
@@ -74,6 +86,7 @@ function GamePage() {
               username={username}
               setUsername={setUsername}
               onStart={handleStart}
+              loadingText="Loading Face Detection..."
             />
           </div>
 
@@ -97,7 +110,7 @@ function GamePage() {
               🏆 Leaderboard
             </h2>
             <ul className="divide-y divide-gray-800">
-              {(leaderboard || []).slice(0, 16).map((entry, idx) => (
+              {(leaderboard || []).slice(0, 10).map((entry, idx) => (
                 <li
                   key={entry._id || idx}
                   className="flex justify-between py-2 text-gray-300"
