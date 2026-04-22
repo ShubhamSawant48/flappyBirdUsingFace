@@ -12,13 +12,14 @@ export const useDinoLogic = () => {
   
   const dinoY = useRef(0);
   const velocityY = useRef(0);
-  const cactusX = useRef(1200); // CRITICAL FIX: Gives you ~3.5 seconds to get ready!
+  const cactusX = useRef(1200);
   const frameRef = useRef(null);
   const usernameRef = useRef('');
   const scoreRef = useRef(0); 
 
   const refreshLeaderboard = useCallback(async () => {
-    const data = await fetchLeaderboard();
+    // ✅ FIX: fetch only dino scores
+    const data = await fetchLeaderboard('dino');
     setLeaderboard(data);
   }, []);
 
@@ -43,7 +44,6 @@ export const useDinoLogic = () => {
 
     cactusX.current -= GAME_SPEED;
     
-    // Reset Cactus closer once the game is actually flowing
     if (cactusX.current < -50) {
       cactusX.current = 600 + Math.random() * 200; 
       scoreRef.current += 10;
@@ -58,7 +58,8 @@ export const useDinoLogic = () => {
 
     if (hitCactus) {
       setGameState('over');
-      postScore(usernameRef.current, scoreRef.current).then(refreshLeaderboard);
+      // ✅ FIX: pass 'dino' as the game identifier
+      postScore(usernameRef.current, scoreRef.current, 'dino').then(refreshLeaderboard);
       return; 
     }
 
@@ -68,7 +69,7 @@ export const useDinoLogic = () => {
   const startGame = useCallback((username) => {
     dinoY.current = 0;
     velocityY.current = 0;
-    cactusX.current = 1200; // Reset to the big delay every time you hit play!
+    cactusX.current = 1200;
     scoreRef.current = 0;
     setScore(0);
     usernameRef.current = username;

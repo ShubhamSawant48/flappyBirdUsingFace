@@ -11,12 +11,18 @@ const scoreSchema = new Schema({
   score: {
     type: Number,
     required: true
+  },
+  // ✅ FIX: Add game field so dino and flappy scores are separated
+  game: {
+    type: String,
+    required: true,
+    enum: ['dino', 'flappy'], // only these two values allowed
+    default: 'dino'
   }
 }, {
-  timestamps: true // Adds createdAt and updatedAt fields
+  timestamps: true
 });
 
 const Score = mongoose.model('Score', scoreSchema);
 
 module.exports = Score;
-
