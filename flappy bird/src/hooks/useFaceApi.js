@@ -6,9 +6,6 @@ export const useFaceApi = (onSmile, isDetecting) => {
   const faceBoxCanvasRef = useRef(null);
   const detectionLoopRef = useRef(null);
   const canJumpRef = useRef(true);
-
-  // 🐛 FIX #3: Use a "running" flag so the async loop knows to stop
-  // even if it's mid-execution when stopDetection is called.
   const isRunningRef = useRef(false);
 
   const savedOnSmile = useRef(onSmile);
@@ -43,50 +40,116 @@ export const useFaceApi = (onSmile, isDetecting) => {
   }, []);
 
   const startDetection = useCallback(() => {
-    // 🐛 FIX #3: Stop any existing loop before starting a new one
     isRunningRef.current = false;
     if (detectionLoopRef.current) clearTimeout(detectionLoopRef.current);
-
     isRunningRef.current = true;
 
     const runDetection = async () => {
-      // 🐛 FIX #3: Check the flag at the START of every iteration.
-      // This ensures even a mid-flight async call won't schedule the next tick.
       if (!isRunningRef.current) return;
 
-      if (videoRef.current && !videoRef.current.paused && window.faceapi && faceBoxCanvasRef.current) {
+      const video = videoRef.current;
+      const canvas = faceBoxCanvasRef.current;
+
+      if (
+        video &&
+        canvas &&
+        window.faceapi &&
+        !video.paused &&
+        video.readyState >= 2 &&
+        video.videoWidth > 0 &&
+        video.videoHeight > 0
+      ) {
         try {
-          const detections = await window.faceapi.detectSingleFace(
-            videoRef.current,
-            new window.faceapi.TinyFaceDetectorOptions({ inputSize: 224 })
-          ).withFaceExpressions();
+          const displaySize = {
+            width: video.videoWidth,
+            height: video.videoHeight,
+          };
 
-          // Check again after the await, since async work takes time
-          if (!isRunningRef.current) return;
-
-          const canvas = faceBoxCanvasRef.current;
-          const displaySize = { width: 120, height: 90 };
+          canvas.width = displaySize.width;
+          canvas.height = displaySize.height;
           window.faceapi.matchDimensions(canvas, displaySize);
+
+          const detections = await window.faceapi
+            .detectSingleFace(
+              video,
+              new window.faceapi.TinyFaceDetectorOptions({ inputSize: 224 })
+            )
+            .withFaceExpressions();
+
+          if (!isRunningRef.current) return;
 
           const ctx = canvas.getContext('2d');
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           if (detections) {
             const resizedDetections = window.faceapi.resizeResults(detections, displaySize);
-            window.faceapi.draw.drawDetections(canvas, resizedDetections);
+            const happiness = detections.expressions.happy;
 
-            if (detections.expressions.happy > 0.20 && canJumpRef.current && savedOnSmile.current) {
+            // ✅ Draw a thick, bright face box — color changes green when smiling enough
+            const box = resizedDetections.detection.box;
+            const isSmiling = happiness > 0.08; // lowered threshold
+
+            ctx.strokeStyle = isSmiling ? "#22c55e" : "#60a5fa";
+            ctx.lineWidth = 4;
+            ctx.shadowColor = isSmiling ? "#22c55e" : "#3b82f6";
+            ctx.shadowBlur = 12;
+            ctx.strokeRect(box.x, box.y, box.width, box.height);
+            ctx.shadowBlur = 0;
+
+            // ✅ Large pill-shaped badge above the face box
+            const badgeText = `😊 ${(happiness * 100).toFixed(0)}%`;
+            const badgeX = box.x;
+            const badgeY = box.y - 36;
+            const badgeW = 110;
+            const badgeH = 30;
+            const radius = 8;
+
+            // Pill background
+            ctx.fillStyle = isSmiling ? "rgba(34,197,94,0.85)" : "rgba(59,130,246,0.85)";
+            ctx.beginPath();
+            ctx.moveTo(badgeX + radius, badgeY);
+            ctx.lineTo(badgeX + badgeW - radius, badgeY);
+            ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + radius);
+            ctx.lineTo(badgeX + badgeW, badgeY + badgeH - radius);
+            ctx.quadraticCurveTo(badgeX + badgeW, badgeY + badgeH, badgeX + badgeW - radius, badgeY + badgeH);
+            ctx.lineTo(badgeX + radius, badgeY + badgeH);
+            ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - radius);
+            ctx.lineTo(badgeX, badgeY + radius);
+            ctx.quadraticCurveTo(badgeX, badgeY, badgeX + radius, badgeY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Badge text
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 16px Arial";
+            ctx.fillText(badgeText, badgeX + 8, badgeY + 20);
+
+            // ✅ Green flash overlay when smile triggers flap
+            if (isSmiling) {
+              ctx.fillStyle = "rgba(34, 197, 94, 0.15)";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // ✅ Trigger flap — just a tiny smile needed (8% confidence)
+            if (isSmiling && canJumpRef.current && savedOnSmile.current) {
               savedOnSmile.current();
               canJumpRef.current = false;
               setTimeout(() => { canJumpRef.current = true; }, 100);
             }
+
+          } else {
+            // No face found
+            ctx.fillStyle = "rgba(0,0,0,0.5)";
+            ctx.fillRect(0, 0, canvas.width, 44);
+            ctx.fillStyle = "rgba(255, 165, 0, 1)";
+            ctx.font = "bold 20px Arial";
+            ctx.fillText("📷 Show your face!", 10, 28);
           }
         } catch (err) {
-          // Ignore Face-API background drops silently
+          // Silently keep loop alive
         }
       }
 
-      // Only schedule next tick if still running
       if (isRunningRef.current) {
         detectionLoopRef.current = setTimeout(runDetection, 30);
       }
@@ -96,7 +159,6 @@ export const useFaceApi = (onSmile, isDetecting) => {
   }, []);
 
   const stopDetection = useCallback(() => {
-    // 🐛 FIX #3: Set the flag FIRST so any in-flight async call exits cleanly
     isRunningRef.current = false;
     if (detectionLoopRef.current) clearTimeout(detectionLoopRef.current);
     detectionLoopRef.current = null;

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 
-const DinoCanvas = ({ dinoY, cactusX, score, gameState }) => {
+const DinoCanvas = ({ dinoY, cactusX, score, gameState, currentLevel }) => {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -10,17 +10,16 @@ const DinoCanvas = ({ dinoY, cactusX, score, gameState }) => {
     let animationId;
 
     const render = () => {
-      // 1. Clear the old frame
       ctx.clearRect(0, 0, 600, 300);
 
-      // 2. Draw Sky
+      // 1. Sky gradient
       const gradient = ctx.createLinearGradient(0, 0, 0, 300);
       gradient.addColorStop(0, "#87CEEB");
       gradient.addColorStop(1, "#E0F6FF");
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 600, 300);
 
-      // 3. Draw Sun & Clouds
+      // 2. Sun & Clouds
       ctx.fillStyle = "#FFD700";
       ctx.beginPath();
       ctx.arc(500, 50, 30, 0, Math.PI * 2);
@@ -29,26 +28,40 @@ const DinoCanvas = ({ dinoY, cactusX, score, gameState }) => {
       ctx.fillText("☁️", 100, 60);
       ctx.fillText("☁️", 350, 90);
 
-      // 4. Draw Ground
+      // 3. Ground
       ctx.fillStyle = "#8B4513";
       ctx.fillRect(0, 240, 600, 60);
       ctx.fillStyle = "#22c55e";
       ctx.fillRect(0, 240, 600, 10);
 
-      // 5. Draw Dino 🦖 
+      // 4. Dino facing FORWARD — flip canvas horizontally around the dino's position
+      // 🦕 faces right by default in emoji, so we mirror it to face left (toward player)
+      ctx.save();
+      ctx.scale(-1, 1);                          // flip horizontally
       ctx.font = "50px Arial";
-      ctx.fillText("🦖", 80, 240 + dinoY.current);
+      // When flipped, x position becomes negative mirror: -80-50 = -130
+      ctx.fillText("🦖", -(80 + 50), 240 + dinoY.current);
+      ctx.restore();
 
-      // 6. Draw Cactus 🌵 (Now you will see it moving!)
+      // 5. Cactus
       ctx.font = "50px Arial";
       ctx.fillText("🌵", cactusX.current, 245);
 
-      // 7. Draw Score
+      // 6. Score
       ctx.fillStyle = "#0f172a";
       ctx.font = "bold 24px Arial";
       ctx.fillText(`Score: ${score}`, 20, 40);
 
-      // 8. "Get Ready" Message
+      // 7. Level badge (top right)
+      if (currentLevel) {
+        ctx.font = "bold 18px Arial";
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#0f172a";
+        ctx.fillText(currentLevel, 580, 40);
+        ctx.textAlign = "left";
+      }
+
+      // 8. Get Ready message
       if (gameState === "running" && cactusX.current > 600) {
         ctx.fillStyle = "#d97706";
         ctx.textAlign = "center";
@@ -57,7 +70,7 @@ const DinoCanvas = ({ dinoY, cactusX, score, gameState }) => {
         ctx.textAlign = "left";
       }
 
-      // 9. Game Over Message
+      // 9. Game Over overlay
       if (gameState === "over") {
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
         ctx.fillRect(0, 0, 600, 300);
@@ -70,22 +83,18 @@ const DinoCanvas = ({ dinoY, cactusX, score, gameState }) => {
         ctx.textAlign = "left";
       }
 
-      // Constantly loop this drawing function
       animationId = requestAnimationFrame(render);
     };
 
-    // Start the loop
     render();
-
-    // Clean up
     return () => cancelAnimationFrame(animationId);
-  }, [gameState, score]); // Update when state changes
+  }, [gameState, score, currentLevel]);
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      width={600} 
-      height={300} 
+    <canvas
+      ref={canvasRef}
+      width={600}
+      height={300}
       className="w-full h-full object-cover rounded-2xl"
     />
   );
