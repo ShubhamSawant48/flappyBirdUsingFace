@@ -5,25 +5,23 @@ import DinoCanvas from "../DinoCanvas";
 import GameUI from "../GameUI";
 
 function DinoGamePage() {
+  // ✅ FIXED: Unified AI Model Tracker
   useEffect(() => {
-    if (window.faceapi) {
-      if (!sessionStorage.getItem("memory_cleaned")) {
-        sessionStorage.setItem("memory_cleaned", "true");
-        window.location.reload();
-      }
-    } else {
-      sessionStorage.removeItem("memory_cleaned");
+    if (sessionStorage.getItem("active_ai_model") !== "handpose") {
+      sessionStorage.setItem("active_ai_model", "handpose");
+      window.location.reload(); // Micro-refresh to clear FaceAPI memory
     }
   }, []);
 
   const [isDetecting, setIsDetecting] = useState(false);
   const [username, setUsername] = useState("");
-  const [difficulty, setDifficulty] = useState("easy"); // ✅ difficulty state
+  const [difficulty, setDifficulty] = useState("easy"); 
+  const [countdown, setCountdown] = useState(null); // ✅ ADDED COUNTDOWN STATE
 
   const streamRef = useRef(null);
 
   const { gameState, score, dinoY, cactusX, leaderboard, startGame, jump, currentLevel } =
-    useDinoLogic(difficulty); // ✅ pass difficulty
+    useDinoLogic(difficulty); 
 
   const { modelsLoaded, videoRef, canvasRef } = useHandpose(jump, isDetecting);
 
@@ -31,6 +29,7 @@ function DinoGamePage() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null; // ✅ PERFECT CLEANUP
     }
   };
 
@@ -49,9 +48,22 @@ function DinoGamePage() {
 
     try { await videoRef.current.play(); } catch (err) { console.warn(err.message); }
 
-    startGame(username);
     setIsDetecting(true);
+    setCountdown(3); // ✅ START WARMUP COUNTDOWN INSTEAD OF INSTANT START
   };
+
+  // ✅ COUNTDOWN EFFECT (The Gatekeeper)
+  useEffect(() => {
+    if (countdown === null) return;
+    
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0) {
+      startGame(username); // Model is warmed up, start game logic!
+      setCountdown(null);
+    }
+  }, [countdown, startGame, username]);
 
   useEffect(() => {
     if (gameState === "over") {
@@ -78,15 +90,32 @@ function DinoGamePage() {
               className="absolute top-0 left-0 w-full h-full object-cover scale-x-[-1] z-10" />
             <canvas ref={canvasRef} width="640" height="480"
               className="absolute top-0 left-0 w-full h-full object-cover scale-x-[-1] pointer-events-none z-20" />
+            
             {!modelsLoaded && (
               <div className="absolute inset-0 flex items-center justify-center text-white bg-black/60 z-30 font-bold">
                 Loading Hand Model...
               </div>
             )}
+
+            {/* ✅ COUNTDOWN OVERLAY UI */}
+            {countdown !== null && countdown > 0 && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40">
+                <span className="text-6xl font-extrabold text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.8)] animate-pulse">
+                  {countdown}
+                </span>
+              </div>
+            )}
+            {countdown === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center bg-transparent z-40">
+                <span className="text-5xl font-extrabold text-white drop-shadow-lg animate-ping">
+                  GO!
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* ✅ Difficulty Selector — only show when not playing */}
-          {gameState !== "running" && (
+          {/* Difficulty Selector */}
+          {gameState !== "running" && countdown === null && (
             <div className="w-full max-w-[420px]">
               <p className="text-gray-400 text-sm mb-2 font-medium">Select Difficulty</p>
               <div className="grid grid-cols-3 gap-3">
@@ -113,14 +142,17 @@ function DinoGamePage() {
           )}
 
           <div className="w-full max-w-[420px]">
-            <GameUI
-              gameState={gameState}
-              modelsLoaded={modelsLoaded}
-              username={username}
-              setUsername={setUsername}
-              onStart={handleStart}
-              loadingText="Loading Hand Tracking Model..."
-            />
+            {/* Hide Start UI during countdown */}
+            {countdown === null && (
+              <GameUI
+                gameState={gameState}
+                modelsLoaded={modelsLoaded}
+                username={username}
+                setUsername={setUsername}
+                onStart={handleStart}
+                loadingText="Loading Hand Tracking Model..."
+              />
+            )}
           </div>
 
           {/* Leaderboard */}
@@ -145,7 +177,6 @@ function DinoGamePage() {
             Gesture Dino
           </h1>
           <div className="relative w-full max-w-[500px] h-[300px] border border-gray-800 rounded-2xl overflow-hidden shadow-2xl shadow-black/30 bg-slate-100">
-            {/* ✅ pass currentLevel to canvas for badge display */}
             <DinoCanvas dinoY={dinoY} cactusX={cactusX} score={score} gameState={gameState} currentLevel={currentLevel} />
           </div>
         </div>

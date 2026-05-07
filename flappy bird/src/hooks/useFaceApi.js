@@ -2,6 +2,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 
 export const useFaceApi = (onSmile, isDetecting) => {
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  // ✅ NEW: true only when a face has been confirmed visible in the camera
+  const [detectionReady, setDetectionReady] = useState(false);
+
   const videoRef = useRef(null);
   const faceBoxCanvasRef = useRef(null);
   const detectionLoopRef = useRef(null);
@@ -9,9 +12,7 @@ export const useFaceApi = (onSmile, isDetecting) => {
   const isRunningRef = useRef(false);
 
   const savedOnSmile = useRef(onSmile);
-  useEffect(() => {
-    savedOnSmile.current = onSmile;
-  }, [onSmile]);
+  useEffect(() => { savedOnSmile.current = onSmile; }, [onSmile]);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -22,7 +23,7 @@ export const useFaceApi = (onSmile, isDetecting) => {
           window.faceapi.nets.faceExpressionNet.loadFromUri('/models'),
         ]);
         setModelsLoaded(true);
-        console.log("✅ FaceAPI models loaded successfully.");
+        console.log("✅ FaceAPI models loaded.");
       } catch (error) {
         console.error("Error loading FaceAPI models:", error);
       }
@@ -42,6 +43,9 @@ export const useFaceApi = (onSmile, isDetecting) => {
   const startDetection = useCallback(() => {
     isRunningRef.current = false;
     if (detectionLoopRef.current) clearTimeout(detectionLoopRef.current);
+
+    // ✅ Reset detection ready on every new start
+    setDetectionReady(false);
     isRunningRef.current = true;
 
     const runDetection = async () => {
@@ -51,29 +55,20 @@ export const useFaceApi = (onSmile, isDetecting) => {
       const canvas = faceBoxCanvasRef.current;
 
       if (
-        video &&
-        canvas &&
-        window.faceapi &&
+        video && canvas && window.faceapi &&
         !video.paused &&
         video.readyState >= 2 &&
         video.videoWidth > 0 &&
         video.videoHeight > 0
       ) {
         try {
-          const displaySize = {
-            width: video.videoWidth,
-            height: video.videoHeight,
-          };
-
+          const displaySize = { width: video.videoWidth, height: video.videoHeight };
           canvas.width = displaySize.width;
           canvas.height = displaySize.height;
           window.faceapi.matchDimensions(canvas, displaySize);
 
           const detections = await window.faceapi
-            .detectSingleFace(
-              video,
-              new window.faceapi.TinyFaceDetectorOptions({ inputSize: 224 })
-            )
+            .detectSingleFace(video, new window.faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
             .withFaceExpressions();
 
           if (!isRunningRef.current) return;
@@ -82,13 +77,15 @@ export const useFaceApi = (onSmile, isDetecting) => {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           if (detections) {
+            // ✅ Face confirmed — signal ready to parent
+            setDetectionReady(true);
+
             const resizedDetections = window.faceapi.resizeResults(detections, displaySize);
             const happiness = detections.expressions.happy;
+            const isSmiling = happiness > 0.08;
 
-            // ✅ Draw a thick, bright face box — color changes green when smiling enough
+            // Draw face box
             const box = resizedDetections.detection.box;
-            const isSmiling = happiness > 0.08; // lowered threshold
-
             ctx.strokeStyle = isSmiling ? "#22c55e" : "#60a5fa";
             ctx.lineWidth = 4;
             ctx.shadowColor = isSmiling ? "#22c55e" : "#3b82f6";
@@ -96,57 +93,54 @@ export const useFaceApi = (onSmile, isDetecting) => {
             ctx.strokeRect(box.x, box.y, box.width, box.height);
             ctx.shadowBlur = 0;
 
-            // ✅ Large pill-shaped badge above the face box
+            // Smile badge
             const badgeText = `😊 ${(happiness * 100).toFixed(0)}%`;
             const badgeX = box.x;
-            const badgeY = box.y - 36;
+            const badgeY = Math.max(box.y - 36, 4);
             const badgeW = 110;
             const badgeH = 30;
-            const radius = 8;
+            const r = 8;
 
-            // Pill background
             ctx.fillStyle = isSmiling ? "rgba(34,197,94,0.85)" : "rgba(59,130,246,0.85)";
             ctx.beginPath();
-            ctx.moveTo(badgeX + radius, badgeY);
-            ctx.lineTo(badgeX + badgeW - radius, badgeY);
-            ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + radius);
-            ctx.lineTo(badgeX + badgeW, badgeY + badgeH - radius);
-            ctx.quadraticCurveTo(badgeX + badgeW, badgeY + badgeH, badgeX + badgeW - radius, badgeY + badgeH);
-            ctx.lineTo(badgeX + radius, badgeY + badgeH);
-            ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - radius);
-            ctx.lineTo(badgeX, badgeY + radius);
-            ctx.quadraticCurveTo(badgeX, badgeY, badgeX + radius, badgeY);
+            ctx.moveTo(badgeX + r, badgeY);
+            ctx.lineTo(badgeX + badgeW - r, badgeY);
+            ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + r);
+            ctx.lineTo(badgeX + badgeW, badgeY + badgeH - r);
+            ctx.quadraticCurveTo(badgeX + badgeW, badgeY + badgeH, badgeX + badgeW - r, badgeY + badgeH);
+            ctx.lineTo(badgeX + r, badgeY + badgeH);
+            ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - r);
+            ctx.lineTo(badgeX, badgeY + r);
+            ctx.quadraticCurveTo(badgeX, badgeY, badgeX + r, badgeY);
             ctx.closePath();
             ctx.fill();
 
-            // Badge text
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 16px Arial";
             ctx.fillText(badgeText, badgeX + 8, badgeY + 20);
 
-            // ✅ Green flash overlay when smile triggers flap
             if (isSmiling) {
-              ctx.fillStyle = "rgba(34, 197, 94, 0.15)";
+              ctx.fillStyle = "rgba(34,197,94,0.12)";
               ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
 
-            // ✅ Trigger flap — just a tiny smile needed (8% confidence)
             if (isSmiling && canJumpRef.current && savedOnSmile.current) {
               savedOnSmile.current();
               canJumpRef.current = false;
               setTimeout(() => { canJumpRef.current = true; }, 100);
             }
-
           } else {
-            // No face found
-            ctx.fillStyle = "rgba(0,0,0,0.5)";
-            ctx.fillRect(0, 0, canvas.width, 44);
-            ctx.fillStyle = "rgba(255, 165, 0, 1)";
-            ctx.font = "bold 20px Arial";
-            ctx.fillText("📷 Show your face!", 10, 28);
+            // ✅ No face — reset ready state so game can't start without detection
+            setDetectionReady(false);
+            const ctx2 = canvas.getContext('2d');
+            ctx2.fillStyle = "rgba(0,0,0,0.5)";
+            ctx2.fillRect(0, 0, canvas.width, 44);
+            ctx2.fillStyle = "rgba(255,165,0,1)";
+            ctx2.font = "bold 20px Arial";
+            ctx2.fillText("📷 Show your face!", 10, 28);
           }
         } catch (err) {
-          // Silently keep loop alive
+          // keep loop alive silently
         }
       }
 
@@ -162,6 +156,7 @@ export const useFaceApi = (onSmile, isDetecting) => {
     isRunningRef.current = false;
     if (detectionLoopRef.current) clearTimeout(detectionLoopRef.current);
     detectionLoopRef.current = null;
+    setDetectionReady(false);
 
     const canvas = faceBoxCanvasRef.current;
     if (canvas) {
@@ -176,5 +171,5 @@ export const useFaceApi = (onSmile, isDetecting) => {
     return () => stopDetection();
   }, [isDetecting, modelsLoaded, startDetection, stopDetection]);
 
-  return { modelsLoaded, videoRef, faceBoxCanvasRef };
+  return { modelsLoaded, detectionReady, videoRef, faceBoxCanvasRef };
 };

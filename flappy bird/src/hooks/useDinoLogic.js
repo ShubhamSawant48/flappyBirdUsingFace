@@ -1,7 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { postScore, fetchLeaderboard } from '../api';
 
-// ✅ LEVELS: Speed and cactus gap change per level
 const LEVELS = {
   easy:   { gameSpeed: 4,  minGap: 700, maxGap: 900,  label: '🟢 Easy'   },
   medium: { gameSpeed: 7,  minGap: 500, maxGap: 700,  label: '🟡 Medium' },
@@ -24,7 +23,6 @@ export const useDinoLogic = (difficulty = 'easy') => {
   const scoreRef = useRef(0);
   const difficultyRef = useRef(difficulty);
 
-  // Keep difficulty ref in sync
   useEffect(() => {
     difficultyRef.current = difficulty;
   }, [difficulty]);
@@ -58,7 +56,6 @@ export const useDinoLogic = (difficulty = 'easy') => {
     cactusX.current -= gameSpeed;
 
     if (cactusX.current < -50) {
-      // Gap between cacti depends on difficulty
       cactusX.current = minGap + Math.random() * (maxGap - minGap);
       scoreRef.current += 10;
       setScore(scoreRef.current);
@@ -93,9 +90,12 @@ export const useDinoLogic = (difficulty = 'easy') => {
     if (gameState === 'running') {
       frameRef.current = requestAnimationFrame(gameLoop);
     } else {
-      cancelAnimationFrame(frameRef.current);
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
     }
-    return () => cancelAnimationFrame(frameRef.current);
+    // CRITICAL CLEANUP: Prevents game loop from running when switching pages
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
   }, [gameState, gameLoop]);
 
   return {

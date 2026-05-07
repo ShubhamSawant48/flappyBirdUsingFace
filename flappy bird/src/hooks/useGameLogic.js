@@ -32,7 +32,6 @@ export const useGameLogic = () => {
   const pipeMovementBounds = useRef({ top: 50, bottom: SCREEN_HEIGHT - PIPE_GAP - 50 });
 
   const refreshLeaderboard = useCallback(async () => {
-    // ✅ FIX: fetch only flappy scores
     const data = await fetchLeaderboard('flappy');
     setLeaderboard(data);
   }, []);
@@ -49,7 +48,6 @@ export const useGameLogic = () => {
 
   const handleGameOver = useCallback(async () => {
     setGameState('over');
-    // ✅ FIX: pass 'flappy' as the game identifier
     await postScore(usernameRef.current, score, 'flappy');
     await refreshLeaderboard();
   }, [score, refreshLeaderboard]);
@@ -128,9 +126,12 @@ export const useGameLogic = () => {
     if (gameState === 'running') {
       gameLoopIntervalRef.current = setInterval(gameLoop, 20);
     } else {
-      clearInterval(gameLoopIntervalRef.current);
+      if (gameLoopIntervalRef.current) clearInterval(gameLoopIntervalRef.current);
     }
-    return () => clearInterval(gameLoopIntervalRef.current);
+    // CRITICAL CLEANUP
+    return () => {
+      if (gameLoopIntervalRef.current) clearInterval(gameLoopIntervalRef.current);
+    };
   }, [gameState, gameLoop]);
 
   return {

@@ -9,6 +9,8 @@ function GamePage() {
   const [isDetecting, setIsDetecting] = useState(false);
   const [username, setUsername] = useState("");
   const [highScore, setHighScore] = useState(0);
+  const [countdown, setCountdown] = useState(null); 
+  const [isWaitingForFace, setIsWaitingForFace] = useState(false); 
 
   const streamRef = useRef(null);
 
@@ -24,33 +26,36 @@ function GamePage() {
     level,
   } = useGameLogic();
 
-  const { modelsLoaded, videoRef, faceBoxCanvasRef } = useFaceApi(
+  const { modelsLoaded, detectionReady, videoRef, faceBoxCanvasRef } = useFaceApi(
     jump,
     isDetecting
   );
 
-  // Only stops hardware tracks — does NOT null out srcObject
+  // ✅ FIXED: Unified AI Model Tracker
+  useEffect(() => {
+    if (sessionStorage.getItem("active_ai_model") !== "faceapi") {
+      sessionStorage.setItem("active_ai_model", "faceapi");
+      window.location.reload(); // Micro-refresh to clear Handpose memory
+    }
+  }, []);
+
   const stopCurrentStream = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
+      // Do NOT set videoRef.current.srcObject = null here, it breaks face-api!
       console.log("🎥 Flappy camera stream released.");
     }
   };
 
   const handleStart = async (stream) => {
-    // Step 1 — kill old stream's hardware tracks first
     stopCurrentStream();
-
-    // Step 2 — store new stream
     streamRef.current = stream;
 
     if (!videoRef.current) return;
 
-    // Step 3 — assign new stream directly (no null gap)
     videoRef.current.srcObject = stream;
 
-    // Step 4 — wait for metadata before play() to avoid black screen
     await new Promise((resolve) => {
       if (videoRef.current.readyState >= 1) {
         resolve();
@@ -63,28 +68,43 @@ function GamePage() {
       };
     });
 
-    // Step 5 — safe to play now
     try {
       await videoRef.current.play();
-      console.log("▶️ Flappy camera playing.");
     } catch (e) {
       console.warn("Video play caught:", e.message);
     }
 
-    // Step 6 — start game and detection after camera is confirmed live
-    startGame(username);
     setIsDetecting(true);
+    setIsWaitingForFace(true); 
   };
 
-  // Stop camera and detection on game over — same safe pattern as Dino
+  useEffect(() => {
+    if (isWaitingForFace && detectionReady) {
+      setIsWaitingForFace(false); 
+      setCountdown(3); 
+    }
+  }, [isWaitingForFace, detectionReady]);
+
+  useEffect(() => {
+    if (countdown === null) return;
+    
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (countdown === 0) {
+      startGame(username); 
+      setCountdown(null);
+    }
+  }, [countdown, startGame, username]);
+
   useEffect(() => {
     if (gameState === "over") {
       setIsDetecting(false);
       stopCurrentStream();
+      setIsWaitingForFace(false);
     }
   }, [gameState]);
 
-  // Release camera when user navigates away from this page
   useEffect(() => {
     const stopOnUnload = () => {
       setIsDetecting(false);
@@ -116,18 +136,47 @@ function GamePage() {
           {/* Camera Feed */}
           <div className="relative w-full max-w-[420px] aspect-video bg-black border border-gray-700 rounded-2xl overflow-hidden shadow-xl shadow-black/30">
             <WebcamView ref={videoRef} faceBoxCanvasRef={faceBoxCanvasRef} />
+            
+            {/* ✅ SCANNING FOR FACE UI */}
+            {isWaitingForFace && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 z-40 gap-4">
+                <div className="w-12 h-12 border-4 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-xl font-bold text-white tracking-widest animate-pulse">
+                  Scanning Face...
+                </span>
+              </div>
+            )}
+
+            {/* ✅ COUNTDOWN OVERLAY UI */}
+            {countdown !== null && countdown > 0 && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40">
+                <span className="text-6xl font-extrabold text-blue-400 drop-shadow-[0_0_15px_rgba(96,165,250,0.8)] animate-pulse">
+                  {countdown}
+                </span>
+              </div>
+            )}
+            {countdown === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center bg-transparent z-40">
+                <span className="text-5xl font-extrabold text-white drop-shadow-lg animate-ping">
+                  GO!
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Game Controls */}
           <div className="w-full max-w-[420px]">
-            <GameUI
-              gameState={gameState}
-              modelsLoaded={modelsLoaded}
-              username={username}
-              setUsername={setUsername}
-              onStart={handleStart}
-              loadingText="Loading Face Detection..."
-            />
+            {/* Hide Start UI during scanning & countdown */}
+            {!isWaitingForFace && countdown === null && (
+              <GameUI
+                gameState={gameState}
+                modelsLoaded={modelsLoaded}
+                username={username}
+                setUsername={setUsername}
+                onStart={handleStart}
+                loadingText="Loading Face Detection..."
+              />
+            )}
           </div>
 
           {/* Score Cards */}
