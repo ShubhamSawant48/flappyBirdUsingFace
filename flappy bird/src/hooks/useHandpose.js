@@ -11,7 +11,6 @@ export const preloadHandposeModel = async () => {
   isFetching = true;
   try {
     if (!tfModule) tfModule = await import('@tensorflow/tfjs');
-
     if (!tfInitialized) {
       await tfModule.ready();
       try {
@@ -25,7 +24,6 @@ export const preloadHandposeModel = async () => {
       tfInitialized = true;
       console.log(`✅ TensorFlow initialized on ${tfBackend}.`);
     }
-
     const handposeModule = await import('@tensorflow-models/handpose');
     globalHandposeModel = await handposeModule.load();
     console.log(`🚀 Handpose loaded on ${tfBackend}!`);
@@ -47,7 +45,12 @@ export const waitForTF = async () => {
 
 export const useHandpose = (onJump, isDetecting) => {
   const [modelsLoaded, setModelsLoaded] = useState(globalHandposeModel !== null);
-  // ✅ NEW: true only when a hand is confirmed visible in the camera
+
+  // ✅ FIX: detectionReady uses ref internally — NEVER setState inside rAF loop.
+  // The rAF loop only writes to detectionReadyRef (no re-render).
+  // A setInterval every 300ms safely syncs ref → state for the parent component.
+  // This completely stops the re-render cascade that was killing fist detection.
+  const detectionReadyRef = useRef(false);
   const [detectionReady, setDetectionReady] = useState(false);
 
   const videoRef = useRef(null);
@@ -67,6 +70,21 @@ export const useHandpose = (onJump, isDetecting) => {
     initModel();
   }, []);
 
+  // ✅ Safe interval to sync detectionReadyRef → state (outside rAF loop)
+  useEffect(() => {
+    if (!isDetecting) {
+      detectionReadyRef.current = false;
+      setDetectionReady(false);
+      return;
+    }
+    const sync = setInterval(() => {
+      setDetectionReady(detectionReadyRef.current);
+    }, 300);
+    return () => clearInterval(sync);
+  }, [isDetecting]);
+
+  // ✅ detect has empty deps — created ONCE, never recreated
+  // Zero re-renders inside this function — all state via refs only
   const detect = useCallback(async () => {
     if (!isRunningRef.current) return;
 
@@ -89,11 +107,12 @@ export const useHandpose = (onJump, isDetecting) => {
         if (!isRunningRef.current) return;
 
         if (predictions && predictions.length > 0) {
-          // ✅ Hand confirmed — signal ready
-          setDetectionReady(true);
+          // ✅ Write to ref only — no setState, no re-render
+          detectionReadyRef.current = true;
 
           const landmarks = predictions[0].landmarks;
 
+          // Draw tracking dots
           ctx.fillStyle = "#3b82f6";
           for (let i = 0; i < landmarks.length; i++) {
             ctx.beginPath();
@@ -106,30 +125,50 @@ export const useHandpose = (onJump, isDetecting) => {
 
           const wrist = landmarks[0];
           const indexKnuckle = landmarks[5];
-          const indexTip = landmarks[8];
+          const indexTip    = landmarks[8];
           const middleKnuckle = landmarks[9];
-          const middleTip = landmarks[12];
+          const middleTip   = landmarks[12];
+          const ringKnuckle = landmarks[13];
+          const ringTip     = landmarks[16];
 
-          const isIndexFolded = getDistance(wrist, indexTip) < (getDistance(wrist, indexKnuckle) * 1.2);
-          const isMiddleFolded = getDistance(wrist, middleTip) < (getDistance(wrist, middleKnuckle) * 1.2);
+          // ✅ BETTER FIST: looser threshold (1.3) + 2-of-3 fingers rule
+          // Old code required BOTH index AND middle at 1.2 — too strict.
+          // Now any 2 of 3 fingers at 1.3 threshold = fist confirmed.
+          // Partial or slightly open fists now reliably register.
+          const isIndexFolded  = getDistance(wrist, indexTip)  < (getDistance(wrist, indexKnuckle)  * 1.3);
+          const isMiddleFolded = getDistance(wrist, middleTip) < (getDistance(wrist, middleKnuckle) * 1.3);
+          const isRingFolded   = getDistance(wrist, ringTip)   < (getDistance(wrist, ringKnuckle)   * 1.3);
 
-          if (isIndexFolded && isMiddleFolded) {
-            ctx.fillStyle = "rgba(255, 0, 0, 0.4)";
+          const foldedCount = [isIndexFolded, isMiddleFolded, isRingFolded].filter(Boolean).length;
+          const isFist = foldedCount >= 2;
+
+          if (isFist) {
+            // Red flash feedback
+            ctx.fillStyle = "rgba(255, 0, 0, 0.35)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // JUMP text so user knows fist was detected
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 26px Arial";
+            ctx.fillText("✊ JUMP!", 10, 34);
+
             if (canJumpRef.current && savedOnJump.current) {
               savedOnJump.current();
               canJumpRef.current = false;
-              setTimeout(() => { canJumpRef.current = true; }, 400);
+              // ✅ 300ms cooldown — responsive but prevents double-jumps
+              setTimeout(() => { canJumpRef.current = true; }, 300);
             }
           }
+
         } else {
-          // ✅ No hand — reset ready so game can't proceed without detection
-          setDetectionReady(false);
+          // ✅ Write to ref only — no setState, no re-render
+          detectionReadyRef.current = false;
+
           ctx.save();
           ctx.scale(-1, 1);
           ctx.fillStyle = "rgba(255, 165, 0, 0.9)";
-          ctx.font = "bold 24px Arial";
-          ctx.fillText("✋ Show your hand!", (-canvas.width / 2) - 130, 36);
+          ctx.font = "bold 22px Arial";
+          ctx.fillText("✋ Show your hand!", (-canvas.width / 2) - 140, 36);
           ctx.restore();
         }
       } catch (err) {
@@ -144,18 +183,18 @@ export const useHandpose = (onJump, isDetecting) => {
     if (isRunningRef.current) {
       detectionLoopRef.current = requestAnimationFrame(detect);
     }
-  }, []);
+  }, []); // ✅ empty deps — loop is stable, never recreated
 
   useEffect(() => {
     if (isDetecting && modelsLoaded) {
-      setDetectionReady(false); // ✅ Reset on every new detection session
+      detectionReadyRef.current = false;
       isRunningRef.current = true;
       detect();
     } else {
       isRunningRef.current = false;
       if (detectionLoopRef.current) cancelAnimationFrame(detectionLoopRef.current);
       detectionLoopRef.current = null;
-      setDetectionReady(false);
+      detectionReadyRef.current = false;
     }
     return () => {
       isRunningRef.current = false;

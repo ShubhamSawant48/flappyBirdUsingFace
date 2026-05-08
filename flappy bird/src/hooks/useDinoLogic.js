@@ -23,6 +23,12 @@ export const useDinoLogic = (difficulty = 'easy') => {
   const scoreRef = useRef(0);
   const difficultyRef = useRef(difficulty);
 
+  // ✅ FIX 1: gameState ref so gameLoop never needs gameState as a dependency
+  const gameStateRef = useRef('waiting');
+
+  // ✅ FIX 2: refreshLeaderboard ref so gameLoop never needs it as a dependency  
+  const refreshLeaderboardRef = useRef(null);
+
   useEffect(() => {
     difficultyRef.current = difficulty;
   }, [difficulty]);
@@ -32,16 +38,24 @@ export const useDinoLogic = (difficulty = 'easy') => {
     setLeaderboard(data);
   }, []);
 
+  // Keep ref in sync
+  useEffect(() => {
+    refreshLeaderboardRef.current = refreshLeaderboard;
+  }, [refreshLeaderboard]);
+
   useEffect(() => { refreshLeaderboard(); }, [refreshLeaderboard]);
 
+  // ✅ FIX 2: jump reads from ref — never stale, no deps needed
   const jump = useCallback(() => {
-    if (gameState === 'running' && dinoY.current >= -5) {
+    if (gameStateRef.current === 'running' && dinoY.current >= -5) {
       velocityY.current = JUMP_VELOCITY;
     }
-  }, [gameState]);
+  }, []); // empty deps — always fresh via ref
 
+  // ✅ FIX 1: gameLoop has empty deps — created ONCE, never recreated
+  // Reads everything from refs so rAF chain runs uninterrupted every frame
   const gameLoop = useCallback(() => {
-    if (gameState !== 'running') return;
+    if (gameStateRef.current !== 'running') return;
 
     const { gameSpeed, minGap, maxGap } = LEVELS[difficultyRef.current];
 
@@ -68,13 +82,15 @@ export const useDinoLogic = (difficulty = 'easy') => {
     );
 
     if (hitCactus) {
+      gameStateRef.current = 'over';
       setGameState('over');
-      postScore(usernameRef.current, scoreRef.current, 'dino').then(refreshLeaderboard);
+      postScore(usernameRef.current, scoreRef.current, 'dino')
+        .then(() => refreshLeaderboardRef.current?.());
       return;
     }
 
     frameRef.current = requestAnimationFrame(gameLoop);
-  }, [gameState, refreshLeaderboard]);
+  }, []); // ✅ empty deps — stable forever, zero stutter
 
   const startGame = useCallback((username) => {
     dinoY.current = 0;
@@ -83,6 +99,7 @@ export const useDinoLogic = (difficulty = 'easy') => {
     scoreRef.current = 0;
     setScore(0);
     usernameRef.current = username;
+    gameStateRef.current = 'running';
     setGameState('running');
   }, []);
 
@@ -92,7 +109,6 @@ export const useDinoLogic = (difficulty = 'easy') => {
     } else {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     }
-    // CRITICAL CLEANUP: Prevents game loop from running when switching pages
     return () => {
       if (frameRef.current) cancelAnimationFrame(frameRef.current);
     };
