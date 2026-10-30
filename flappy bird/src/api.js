@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/leaderboard';
+const API_URL = process.env.VITE_API_URL || 'http://localhost:5000/api/leaderboard' ;
 
 // ✅ FIX: Pass game name so each game fetches only its own scores
 // Usage: fetchLeaderboard('dino')  or  fetchLeaderboard('flappy')
