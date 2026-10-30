@@ -10,7 +10,7 @@ router.route("/").get((req, res) => {
   const filter = game ? { game } : {};
 
   Score.find(filter)
-    .sort({ score: -1 })
+    .sort({ score: 1 })
     .limit(10)
     .then((scores) => res.json(scores))
     .catch((err) => res.status(400).json("Error: " + err));

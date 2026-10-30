@@ -10,7 +10,7 @@ const scoreSchema = new Schema({
   },
   score: {
     type: Number,
-    required: true
+    required: true,
   },
   // ✅ FIX: Add game field so dino and flappy scores are separated
   game: {
@@ -21,7 +21,7 @@ const scoreSchema = new Schema({
   }
 }, {
   timestamps: true
-});
+},);
 
 const Score = mongoose.model('Score', scoreSchema);
 
